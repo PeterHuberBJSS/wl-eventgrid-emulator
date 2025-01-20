@@ -2,7 +2,6 @@ using Azure;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid.Namespaces;
 
-
 var namespaceEndpoint = "rpas-private-dev-uks-evgn.uksouth-1.eventgrid.azure.net"; //"http://localhost:6500/";
 
 // Name of the topic in the namespace
@@ -74,13 +73,25 @@ static async Task PullData(string namespaceEndpoint, string topicName, string to
     {
         var cloudEvent = detail.Event;
         var brokerProperties = detail.BrokerProperties;
-        Console.WriteLine(cloudEvent.Data.ToString());
 
         // The lock token is used to acknowledge, reject or release the event
         Console.WriteLine(brokerProperties.LockToken);
         Console.WriteLine();
 
-        var data = cloudEvent.Data.ToObjectFromJson<Dictionary<string, object>>();
+        var data = cloudEvent.Data?.ToObjectFromJson<Dictionary<string, object>>();
+        if (data != null)
+        {
+            foreach (var key in data.Keys)
+            {
+                Console.WriteLine($"Key: {key}, Value: '{data[key]}'");
+                Console.WriteLine();
+            }
+        }
+        else
+        {
+            Console.WriteLine("Data is null");
+        }
+
         if (cloudEvent.Type == eventType)
         {
             toAcknowledge.Add(brokerProperties.LockToken);
