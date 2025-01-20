@@ -11,15 +11,9 @@ namespace EventGridEmulator.Network;
 /// <summary>
 /// HTTP message handler that emulates the Event Grid retry policy.
 /// </summary>
-internal sealed class SubscriberPolicyHttpMessageHandler : PolicyHttpMessageHandler
+internal sealed class SubscriberPolicyHttpMessageHandler(ILogger<SubscriberPolicyHttpMessageHandler> logger) : PolicyHttpMessageHandler(GetRetryPolicy())
 {
-    private readonly ILogger<SubscriberPolicyHttpMessageHandler> _logger;
-
-    public SubscriberPolicyHttpMessageHandler(ILogger<SubscriberPolicyHttpMessageHandler> logger)
-        : base(GetRetryPolicy())
-    {
-        this._logger = logger;
-    }
+    private readonly ILogger<SubscriberPolicyHttpMessageHandler> _logger = logger;
 
     private static AsyncRetryPolicy<HttpResponseMessage> GetRetryPolicy() => Policy<HttpResponseMessage>
         .Handle<HttpRequestException>()
@@ -68,7 +62,8 @@ internal sealed class SubscriberPolicyHttpMessageHandler : PolicyHttpMessageHand
         // https://learn.microsoft.com/en-us/azure/event-grid/delivery-and-retry#retry-schedule
         using var localCts = new CancellationTokenSource();
         using var globalCts = CancellationTokenSource.CreateLinkedTokenSource(localCts.Token, cancellationToken);
-        localCts.CancelAfter(TimeSpan.FromSeconds(30));
+        localCts.CancelAfter(TimeSpan.FromSeconds(5));
+        globalCts.CancelAfter(TimeSpan.FromSeconds(5));
 
         try
         {

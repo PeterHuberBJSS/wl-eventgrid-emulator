@@ -47,9 +47,9 @@ var app = builder.Build();
 app.MapPost(EventGridPublishHandler.CustomTopicRoute, EventGridPublishHandler.HandleCustomTopicEventAsync);
 app.MapPost(EventGridPublishHandler.NamespaceTopicRoute, EventGridPublishHandler.HandleNamespaceTopicEventAsync);
 app.MapPost(PullQueueHttpContextHandler.ReceiveRoute, PullQueueHttpContextHandler.HandleReceiveAsync);
-app.MapPost(PullQueueHttpContextHandler.AcknowledgeRoute, PullQueueHttpContextHandler.HandleAcknowledgeAsync);
+app.MapPost(PullQueueHttpContextHandler.AcknowledgeRoute, PullQueueHttpContextHandler.HandleAcknowledgeRejectAsync);
 app.MapPost(PullQueueHttpContextHandler.ReleaseRoute, PullQueueHttpContextHandler.HandleReleaseAsync);
-app.MapPost(PullQueueHttpContextHandler.RejectRoute, PullQueueHttpContextHandler.HandleRejectAsync);
+app.MapPost(PullQueueHttpContextHandler.RejectRoute, PullQueueHttpContextHandler.HandleAcknowledgeRejectAsync);
 
 app.MapHealthChecks("/health");
 

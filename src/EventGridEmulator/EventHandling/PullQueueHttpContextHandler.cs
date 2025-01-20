@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using Azure.Messaging;
 using Microsoft.AspNetCore.Mvc;
@@ -20,24 +19,37 @@ internal sealed class PullQueueHttpContextHandler
     [StringSyntax("Route")]
     public const string RejectRoute = "topics/{topic}/eventsubscriptions/{subscription}:reject";
 
-    public static async Task<IResult> HandleReceiveAsync([FromServices] ILogger<PullQueueHttpContextHandler> logger, [FromRoute] string topic, [FromRoute] string subscription, [FromServices] TopicSubscribers<CloudEvent> topicSubscribers, CancellationToken cancellationToken)
+    private PullQueueHttpContextHandler()
     {
-        var result = await topicSubscribers.GetEventAsync(topic, subscription, cancellationToken);
-        var receiveResults = new ReceiveResults
+    }
+
+    public static async Task<IResult> HandleReceiveAsync([FromServices] ILogger<PullQueueHttpContextHandler> logger, [FromRoute] string topic, [FromRoute] string subscription,
+        [FromServices] TopicSubscribers<CloudEvent> topicSubscribers, CancellationToken cancellationToken)
+    {
+        var receiveResults = new ReceiveResults();
+        do
         {
-            Value = new[]
+            var result = await topicSubscribers.GetEventAsync(topic, subscription, cancellationToken);
+            if (result.Item is null)
             {
-                new EventObject
+                break;
+            }
+
+            var eventObject = new EventObject
+            {
+                BrokerProperties = new BrokerProperties
                 {
-                    BrokerProperties = new BrokerProperties
-                    {
-                        DeliveryCount = 1, // currently only support receiving one event at a time
-                        LockToken = result.LockToken,
-                    },
-                    Event = result.Item,
+                    DeliveryCount = 1,
+                    LockToken = result.LockToken,
                 },
-            },
-        };
+                Event = result.Item,
+            };
+            receiveResults.Value.Add(eventObject);
+            if (!result.hasMoreItems)
+            {
+                break;
+            }
+        } while (true);
 
         if (logger.IsEnabled(LogLevel.Information))
         {
@@ -47,7 +59,7 @@ internal sealed class PullQueueHttpContextHandler
         return Results.Ok(receiveResults);
     }
 
-    public static async Task<IResult> HandleAcknowledgeAsync([FromRoute] string topic, [FromRoute] string subscription, [FromBody] LockTokensRequestData requestData, [FromServices] TopicSubscribers<CloudEvent> topicSubscribers)
+    public static async Task<IResult> HandleAcknowledgeRejectAsync([FromRoute] string topic, [FromRoute] string subscription, [FromBody] LockTokensRequestData requestData, [FromServices] TopicSubscribers<CloudEvent> topicSubscribers)
     {
         var succeededLockTokens = new List<string>();
         var failedLockTokens = new List<FailedLockToken>();
@@ -108,43 +120,12 @@ internal sealed class PullQueueHttpContextHandler
             SucceededLockTokens = succeededLockTokens,
         });
     }
-
-    public static async Task<IResult> HandleRejectAsync([FromRoute] string topic, [FromRoute] string subscription, [FromBody] LockTokensRequestData requestData, [FromServices] TopicSubscribers<CloudEvent> topicSubscribers)
-    {
-        var succeededLockTokens = new List<string>();
-        var failedLockTokens = new List<FailedLockToken>();
-        if (requestData?.LockTokens is not null)
-        {
-            foreach (var token in requestData.LockTokens)
-            {
-                if (token is null)
-                {
-                    continue;
-                }
-
-                if (topicSubscribers.TryDeleteEvent(topic, subscription, token))
-                {
-                    succeededLockTokens.Add(token);
-                }
-                else
-                {
-                    failedLockTokens.Add(new() { LockToken = token, Error = new() { Message = "invalid token" } });
-                }
-            }
-        }
-
-        return Results.Ok(new LockTokensResultsData
-        {
-            FailedLockTokens = failedLockTokens,
-            SucceededLockTokens = succeededLockTokens,
-        });
-    }
 }
 
 internal sealed class ReceiveResults
 {
     [JsonPropertyName("value")]
-    public EventObject[]? Value { get; set; }
+    public List<EventObject> Value { get; set; } = [];
 }
 
 internal sealed class EventObject

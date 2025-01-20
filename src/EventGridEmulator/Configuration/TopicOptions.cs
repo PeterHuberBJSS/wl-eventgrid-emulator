@@ -69,12 +69,7 @@ internal sealed class TopicOptions
 
     public override bool Equals(object? obj)
     {
-        if (ReferenceEquals(this, obj))
-        {
-            return true;
-        }
-
-        return obj is TopicOptions other && this.Equals(other);
+        return ReferenceEquals(this, obj) || obj is TopicOptions other && this.Equals(other);
     }
 
     private bool Equals(TopicOptions other) => (this.Topics, other.Topics) switch

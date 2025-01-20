@@ -1,4 +1,3 @@
-using System.Text.Json;
 using EventGridEmulator.Configuration;
 using EventGridEmulator.Network;
 using Microsoft.Extensions.Options;

@@ -22,7 +22,7 @@ internal sealed class TopicSubscribers<T>
         }
     }
 
-    public ValueTask<(T Item, LockToken LockToken)> GetEventAsync(TopicName topicName, SubscriberName subscriptionName, CancellationToken cancellationToken)
+    public ValueTask<(T? Item, LockToken LockToken, bool hasMoreItems)> GetEventAsync(TopicName topicName, SubscriberName subscriptionName, CancellationToken cancellationToken)
     {
         var subscription = this.GetSubscriptionInfo(topicName, subscriptionName);
         return subscription.GetItemAsync(cancellationToken);
@@ -61,12 +61,17 @@ internal sealed class TopicSubscribers<T>
 
         public void AddItem(T item) => this._queue.Writer.TryWrite(item); // TryWrite always succeeds with Unbounded channels
 
-        public async ValueTask<(T Item, LockToken LockToken)> GetItemAsync(CancellationToken cancellationToken)
+        public async ValueTask<(T? Item, LockToken LockToken, bool hasMoreItems)> GetItemAsync(CancellationToken cancellationToken)
         {
+            if (this._queue.Reader.Count == 0)
+            {
+                return (default(T?), string.Empty, false);
+            }
+
             var item = await this._queue.Reader.ReadAsync(cancellationToken);
             var token = "token-" + Interlocked.Increment(ref this._lockToken).ToString(CultureInfo.InvariantCulture);
             this._inFlightItems.TryAdd(token, item);
-            return (item, token);
+            return (item, token, this._queue.Reader.Count > 0);
         }
 
         public bool RemoveItem(LockToken lockToken)

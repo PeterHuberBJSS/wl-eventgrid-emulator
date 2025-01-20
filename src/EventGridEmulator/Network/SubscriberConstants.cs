@@ -8,22 +8,16 @@ internal static class SubscriberConstants
 
     public const string DefaultTopicValue = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventGrid/topics/";
 
-    // Message Delivery Status
-    // https://learn.microsoft.com/en-us/azure/event-grid/delivery-and-retry?WT.mc_id=DT-MVP-5003978#message-delivery-status
     public static readonly HashSet<HttpStatusCode> NonRetriableStatusCodes = new HashSet<HttpStatusCode>
     {
-        // Success Codes
+        // Of course we let HTTP 200 pass through
         HttpStatusCode.OK,
-        HttpStatusCode.Created,
-        HttpStatusCode.Accepted,
-        HttpStatusCode.NonAuthoritativeInformation,
-        HttpStatusCode.NoContent,
 
-        // Failure Codes
+        // Those cannot be retried based on Event Grid's documentation
+        // https://learn.microsoft.com/en-us/azure/event-grid/delivery-and-retry#retry-schedule
         HttpStatusCode.BadRequest,
+        HttpStatusCode.RequestEntityTooLarge,
         HttpStatusCode.Unauthorized,
-        HttpStatusCode.Forbidden,
-        HttpStatusCode.RequestEntityTooLarge
     };
 
     // Event Grid retry schedule

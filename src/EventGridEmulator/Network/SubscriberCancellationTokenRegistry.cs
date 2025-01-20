@@ -1,4 +1,4 @@
-﻿namespace EventGridEmulator.Network;
+namespace EventGridEmulator.Network;
 
 /// <summary>
 /// Manages a dedicated cancellation token for each tuple of (topic, subscriber).
@@ -9,14 +9,13 @@ internal sealed class SubscriberCancellationTokenRegistry : ISubscriberCancellat
 {
     private readonly IHostApplicationLifetime _applicationLifetime;
     private readonly Dictionary<string, Lazy<CancellationTokenSource>> _cancellationTokenSources;
+    private static string GetKey(string topic, string subscriber) => $"{topic}/{subscriber}";
 
     public SubscriberCancellationTokenRegistry(IHostApplicationLifetime applicationLifetime)
     {
         this._applicationLifetime = applicationLifetime;
         this._cancellationTokenSources = new Dictionary<string, Lazy<CancellationTokenSource>>(StringComparer.OrdinalIgnoreCase);
     }
-
-    private static string GetKey(string topic, string subscriber) => $"{topic}/{subscriber}";
 
     public void Register(string topic, string subscriber)
     {

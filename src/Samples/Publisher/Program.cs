@@ -1,19 +1,149 @@
 using Azure;
-using Azure.Messaging.EventGrid;
+using Azure.Messaging;
+using Azure.Messaging.EventGrid.Namespaces;
 
-var client1 = new EventGridPublisherClient(
-    new Uri("http://localhost:6500/activities-eg/api/events"),
-    new AzureKeyCredential("dummyAccessKey"));
 
-var client2 = new EventGridPublisherClient(
-    new Uri("http://localhost:6500/comments-eg/api/events"),
-    new AzureKeyCredential("dummyAccessKey"));
+var namespaceEndpoint = "rpas-private-dev-uks-evgn.uksouth-1.eventgrid.azure.net"; //"http://localhost:6500/";
 
-var data = new Dictionary<string, string>();
-data["foo"] = "bar";
+// Name of the topic in the namespace
+var topicName = "application-updates-rpas-dev-uks-evgt"; //"create-application";
 
-var response1 = client1.SendEvent(new EventGridEvent("thesubject", "theeventtype", "1.0", data));
-Console.WriteLine(response1.Status);
+// Access key for the topic
+var topicKey = "15C5cMpUez8jBQ54K7y3OhEF8D9cUdNwhnr761zwDhLeumVPXmTeJQQJ99BAACmepeSXJ3w3AAABAZEGM2X6"; //"TheLocal+DevelopmentKey=";
 
-var response2 = client2.SendEvent(new EventGridEvent("thesubject", "theeventtype", "1.0", data));
-Console.WriteLine(response2.Status);
+var subscriptionName = "application-updates-rpas-dev-uks-evgs"; //"dynamics-subscription";
+
+var maxEventCount = 100;
+var source = "dynamics-source";
+var eventType = "dynamics-type";
+
+var i = 0;
+
+Console.WriteLine("help:");
+Console.WriteLine("type q, quit or exit to close app");
+Console.WriteLine("type 'push' to push an event");
+Console.WriteLine("type 'pull' to pull an event");
+do
+{
+    i++;
+    var read = Console.ReadLine();
+
+    switch (read)
+    {
+        case "push":
+            // Construct the client using an Endpoint for a namespace as well as the access key
+            var clientPush = new EventGridSenderClient(new Uri(namespaceEndpoint), topicName, new AzureKeyCredential(topicKey));
+
+            var data3 = new Dictionary<string, object>
+            {
+                ["name"] = "Test 123" + i,
+                ["operatorId"] = "GBP-OP-123ABC456DEF",
+                ["applicationId"] = "98361a1a-d2c2-4c08-819a-33dad8b1d20" + i,
+                ["status"] = 1
+            };
+
+            var cloudEvent = new CloudEvent(source, eventType, data3);
+            await clientPush.SendAsync(cloudEvent);
+
+            Console.WriteLine("Pushed index {0}", i);
+            break;
+        case "pull":
+
+            await PullData(namespaceEndpoint, topicName, topicKey, subscriptionName, maxEventCount, eventType);
+            break;
+
+        case "q":
+        case "quit":
+        case "exit":
+            return;
+        default:
+            break;
+    }
+}
+while (true);
+
+static async Task PullData(string namespaceEndpoint, string topicName, string topicKey, string subscriptionName, int maxEventCount, string eventType)
+{
+    var clientPull = new EventGridReceiverClient(new Uri(namespaceEndpoint), topicName, subscriptionName, new AzureKeyCredential(topicKey));
+    ReceiveResult result = await clientPull.ReceiveAsync(maxEventCount);
+    //Retry failed after 4 tries. Retry settings can be adjusted in ClientOptions.Retry or by configuring a custom retry policy in ClientOptions.RetryPolicy. (The operation was cancelled because it exceeded the configured timeout of 0:01:40. Network timeout can be adjusted in ClientOptions.Retry.NetworkTimeout.) (The operation was cancelled because it exceeded the configured timeout of 0:01:40. Network timeout can be adjusted in ClientOptions.Retry.NetworkTimeout.
+    Console.WriteLine("Received Response");
+    var toAcknowledge = new List<string>();
+    var toReject = new List<string>();
+    foreach (var detail in result.Details)
+    {
+        var cloudEvent = detail.Event;
+        var brokerProperties = detail.BrokerProperties;
+        Console.WriteLine(cloudEvent.Data.ToString());
+
+        // The lock token is used to acknowledge, reject or release the event
+        Console.WriteLine(brokerProperties.LockToken);
+        Console.WriteLine();
+
+        var data = cloudEvent.Data.ToObjectFromJson<Dictionary<string, object>>();
+        if (cloudEvent.Type == eventType)
+        {
+            toAcknowledge.Add(brokerProperties.LockToken);
+        }
+
+        // reject all other events
+        else
+        {
+            toReject.Add(brokerProperties.LockToken);
+        }
+    }
+
+    if (toAcknowledge.Count > 0)
+    {
+        await Acknowledge(clientPull, toAcknowledge);
+    }
+
+    if (toReject.Count > 0)
+    {
+        await Reject(clientPull, toReject);
+    }
+}
+
+static async Task Reject(EventGridReceiverClient clientPull, List<string> toReject)
+{
+    RejectResult rejectResult = await clientPull.RejectAsync(toReject);
+
+    // Inspect the Reject result
+    Console.WriteLine($"Failed count for Reject: {rejectResult.FailedLockTokens.Count}");
+    foreach (var failedLockToken in rejectResult.FailedLockTokens)
+    {
+        Console.WriteLine($"Lock Token: {failedLockToken.LockToken}");
+        Console.WriteLine($"Error Code: {failedLockToken.Error}");
+        Console.WriteLine($"Error Description: {failedLockToken.ToString}");
+    }
+
+    Console.WriteLine($"Success count for Reject: {rejectResult.SucceededLockTokens.Count}");
+    foreach (var lockToken in rejectResult.SucceededLockTokens)
+    {
+        Console.WriteLine($"Lock Token: {lockToken}");
+    }
+
+    Console.WriteLine();
+}
+
+static async Task Acknowledge(EventGridReceiverClient clientPull, List<string> toAcknowledge)
+{
+    AcknowledgeResult acknowledgeResult = await clientPull.AcknowledgeAsync(toAcknowledge);
+
+    // Inspect the Acknowledge result
+    Console.WriteLine($"Failed count for Acknowledge: {acknowledgeResult.FailedLockTokens.Count}");
+    foreach (var failedLockToken in acknowledgeResult.FailedLockTokens)
+    {
+        Console.WriteLine($"Lock Token: {failedLockToken.LockToken}");
+        Console.WriteLine($"Error Code: {failedLockToken.Error}");
+        Console.WriteLine($"Error Description: {failedLockToken.ToString}");
+    }
+
+    Console.WriteLine($"Success count for Acknowledge: {acknowledgeResult.SucceededLockTokens.Count}");
+    foreach (var lockToken in acknowledgeResult.SucceededLockTokens)
+    {
+        Console.WriteLine($"Lock Token: {lockToken}");
+    }
+
+    Console.WriteLine();
+}
