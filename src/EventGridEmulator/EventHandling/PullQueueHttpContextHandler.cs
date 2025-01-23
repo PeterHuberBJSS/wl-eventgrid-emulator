@@ -19,10 +19,6 @@ internal sealed class PullQueueHttpContextHandler
     [StringSyntax("Route")]
     public const string RejectRoute = "topics/{topic}/eventsubscriptions/{subscription}:reject";
 
-    private PullQueueHttpContextHandler()
-    {
-    }
-
     public static async Task<IResult> HandleReceiveAsync([FromServices] ILogger<PullQueueHttpContextHandler> logger, [FromRoute] string topic, [FromRoute] string subscription,
         [FromServices] TopicSubscribers<CloudEvent> topicSubscribers, CancellationToken cancellationToken)
     {
