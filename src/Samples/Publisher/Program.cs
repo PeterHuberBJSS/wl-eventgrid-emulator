@@ -2,15 +2,15 @@ using Azure;
 using Azure.Messaging;
 using Azure.Messaging.EventGrid.Namespaces;
 
-var namespaceEndpoint = "rpas-private-dev-uks-evgn.uksouth-1.eventgrid.azure.net"; //"http://localhost:6500/";
+var namespaceEndpoint = "http://localhost:6500/"; // "rpas-private-dev-uks-evgn.uksouth-1.eventgrid.azure.net";
 
 // Name of the topic in the namespace
-var topicName = "application-updates-rpas-dev-uks-evgt"; //"create-application";
+var topicName = "create-application"; //"application-updates-rpas-dev-uks-evgt";
 
 // Access key for the topic
-var topicKey = "15C5cMpUez8jBQ54K7y3OhEF8D9cUdNwhnr761zwDhLeumVPXmTeJQQJ99BAACmepeSXJ3w3AAABAZEGM2X6"; //"TheLocal+DevelopmentKey=";
+var topicKey = "TheLocal+DevelopmentKey="; //"15C5cMpUez8jBQ54K7y3OhEF8D9cUdNwhnr761zwDhLeumVPXmTeJQQJ99BAACmepeSXJ3w3AAABAZEGM2X6";
 
-var subscriptionName = "application-updates-rpas-dev-uks-evgs"; //"dynamics-subscription";
+var subscriptionName = "dynamics-subscription"; // "application-updates-rpas-dev-uks-evgs";
 
 var maxEventCount = 100;
 var source = "dynamics-source";
@@ -66,7 +66,7 @@ static async Task PullData(string namespaceEndpoint, string topicName, string to
     var clientPull = new EventGridReceiverClient(new Uri(namespaceEndpoint), topicName, subscriptionName, new AzureKeyCredential(topicKey));
     ReceiveResult result = await clientPull.ReceiveAsync(maxEventCount);
     //Retry failed after 4 tries. Retry settings can be adjusted in ClientOptions.Retry or by configuring a custom retry policy in ClientOptions.RetryPolicy. (The operation was cancelled because it exceeded the configured timeout of 0:01:40. Network timeout can be adjusted in ClientOptions.Retry.NetworkTimeout.) (The operation was cancelled because it exceeded the configured timeout of 0:01:40. Network timeout can be adjusted in ClientOptions.Retry.NetworkTimeout.
-    Console.WriteLine("Received Response");
+    Console.WriteLine("Received Response {0}", result.Details.Count);
     var toAcknowledge = new List<string>();
     var toReject = new List<string>();
     foreach (var detail in result.Details)

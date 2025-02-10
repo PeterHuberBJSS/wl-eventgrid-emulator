@@ -4,6 +4,8 @@
   </PropertyGroup>
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>.</DockerfileContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,12 +13,12 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.11" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="EventGridEmulator.Tests" />
-    <Content Include="..\.dockerignore" Link=".dockerignore" />
 
     <!-- This appsettings.json will never be shipped in the released product -->
     <!-- It must be manually provided by the user, but we can use this one when debugging in an IDE -->

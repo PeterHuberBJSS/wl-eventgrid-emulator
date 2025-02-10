@@ -154,6 +154,47 @@ await client.AcknowledgeCloudEventsAsync(topicName, eventSubscriptionName, new A
 - The emulator tries to replicate the original Event Grid behavior when it comes to retry and HTTP header values. However, it is not guaranteed to be 100% accurate. If you find a bug, please open an issue.
 - There's no persistence layer in the emulator, the messages are stored in memory. If you restart the emulator, all pending messages will be lost.
 
+##  Docker
+
+Setup Variables
+
+```PowerShell
+# PowerShell
+$image = 'event-grid-emulator'
+$imagetag = $image + ':dev'
+
+```
+OR
+```Bash
+# Bash
+image='event-grid-emulator'
+imagetag="$image:dev"
+```
+
+Build & Run Docker
+
+```Docker
+# Build Image
+docker build -t $imagetag -f ./EventGridEmulator/Dockerfile .
+
+# Run image
+docker run -v "C:\CAA\wl-eventgrid-emulator\src\EventGridEmulator\appsettings.json:/app/appsettings.json" -it -p 6500:6500 $imagetag --rm 
+```
+
+Create a file named `docker-compose.yaml` and add this content:
+
+```yaml
+version: '3'
+
+services:
+  eventgridemulator:
+    image: event-grid-emulator:latest
+    ports:
+      - "6500:6500"
+    volumes:
+      - "C:\CAA\wl-eventgrid-emulator\src\EventGridEmulator\appsettings.json:/app/appsettings.json"
+```
+
 ## License
 
 This code is licensed under the Apache License, Version 2.0. You may obtain a copy of this license at https://github.com/gsoft-inc/workleap-license/blob/main/LICENSE.
